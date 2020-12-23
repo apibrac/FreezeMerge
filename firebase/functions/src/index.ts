@@ -32,3 +32,25 @@ export const getCheckById = functions.https.onRequest(async (req, resp) => {
   functions.logger.info(check);
   resp.send(check);
 });
+
+export const onAccountChange = functions.firestore
+  .document("account/{accountId}")
+  .onWrite(async (change, context) => {
+    const octokit = new Octokit();
+    const data = change.after.data();
+    if (!data) throw new Error("Document is empty");
+
+    const checks = await change.after.ref.collection("checks").get();
+    const updates = checks.forEach((doc) => {
+      const checkData = doc.data() as {
+        owner: string;
+        repo: string;
+        check_run_id: number;
+      };
+      return octokit.checks.update({
+        ...checkData,
+        conclusion: data.freezed ? "failure" : "success",
+      });
+    });
+    return updates;
+  });
