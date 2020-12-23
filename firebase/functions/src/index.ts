@@ -1,5 +1,5 @@
 import * as functions from "firebase-functions";
-import appFn from "./probot";
+import appFn, { isCheckFreezed, Installation } from "./probot";
 import { Server, Probot, ProbotOctokit } from "probot";
 import { createAppAuth } from "@octokit/auth-app";
 
@@ -30,8 +30,7 @@ export const github_webhook = functions.https.onRequest(server.expressApp);
 export const onInstallationChange = functions.firestore
   .document("installations/{installationId}")
   .onWrite(async (change, context) => {
-    const data = change.after.data();
-    if (!data) throw new Error("Document is empty");
+    const data = change.after.data() as Installation;
     const installationRef = change.after.ref;
     const octokit = newOctokit(parseInt(installationRef.id));
 
@@ -60,7 +59,7 @@ export const onInstallationChange = functions.firestore
       } else {
         return octokit.checks.update({
           ...checkData,
-          conclusion: data.freezed ? "failure" : "success",
+          conclusion: isCheckFreezed(data, check.data) ? "failure" : "success",
         });
       }
     });
