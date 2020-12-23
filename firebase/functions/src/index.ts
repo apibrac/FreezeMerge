@@ -3,15 +3,16 @@ import appFn from "./probot";
 import { Server, Probot, ProbotOctokit } from "probot";
 
 const config = functions.config();
-const Octokit = ProbotOctokit.defaults({
+const probotOptions = {
   appId: config.github.app_id,
   secret: config.github.webhook_secret,
   privateKey: Buffer.from(config.github.private_key, "base64").toString(
     "ascii"
   ),
-});
+};
 
-const server = new Server({ Probot: Probot.defaults({ Octokit }) });
+const Octokit = ProbotOctokit.defaults(probotOptions);
+const server = new Server({ Probot: Probot.defaults(probotOptions) });
 server
   .load(appFn)
   .catch((error) => console.error(`Error loading probot app ${error}`));
