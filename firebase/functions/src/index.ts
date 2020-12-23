@@ -45,7 +45,9 @@ export const onInstallationChange = functions.firestore
       functions.logger.info("Updating check", checkData);
 
       const check = await octokit.checks.get(checkData);
-      if (check.data.pull_requests.length === 0) {
+      if (
+        check.data.pull_requests.find((p) => p.head.sha === check.data.head_sha)
+      ) {
         functions.logger.info(
           "Check should be removed",
           checkData.check_run_id
@@ -56,7 +58,6 @@ export const onInstallationChange = functions.firestore
         });
         return doc.ref.delete();
       } else {
-        functions.logger.info("Got check", check);
         return octokit.checks.update({
           ...checkData,
           conclusion: data.freezed ? "failure" : "success",
