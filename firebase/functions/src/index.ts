@@ -43,11 +43,24 @@ export const onInstallationChange = functions.firestore
         check_run_id: number;
       };
       functions.logger.info("Updating check", checkData);
+
       const check = await octokit.checks.get(checkData);
-      functions.logger.info("Got check", check);
-      return octokit.checks.update({
-        ...checkData,
-        conclusion: data.freezed ? "failure" : "success",
-      });
+      if (check.data.pull_requests.length === 0) {
+        functions.logger.info(
+          "Check should be removed",
+          checkData.check_run_id
+        );
+        await octokit.checks.update({
+          ...checkData,
+          conclusion: "success",
+        });
+        return doc.ref.delete();
+      } else {
+        functions.logger.info("Got check", check);
+        return octokit.checks.update({
+          ...checkData,
+          conclusion: data.freezed ? "failure" : "success",
+        });
+      }
     });
   });
