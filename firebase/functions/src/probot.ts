@@ -5,6 +5,29 @@ import { logger } from "firebase-functions";
 admin.initializeApp();
 const db = admin.firestore();
 
+export type Installation = {
+  freezed: boolean;
+  whitelist: string[];
+};
+
+export function isCheckFreezed(
+  installation: Installation,
+  check?: {
+    pull_requests: { url: string; head: { sha: string } }[];
+    head_sha: string;
+  }
+) {
+  if (!installation.freezed) return false;
+  if (check) {
+    const pull_requests = check.pull_requests.filter(
+      ({ head }) => head.sha === check.head_sha
+    );
+    if (pull_requests.find((pr) => installation.whitelist.includes(pr.url)))
+      return false;
+  }
+  return true;
+}
+
 export default (app: Probot) => {
   app.on(["check_suite.requested"], async function (context) {
     const startTime = new Date();
@@ -20,8 +43,7 @@ export default (app: Probot) => {
     const installation = db
       .collection("installations")
       .doc(installation_id.toString());
-    const data = (await installation.get()).data();
-    if (!data) throw new Error("Did not found installation");
+    const data = (await installation.get()).data() as Installation;
 
     const check = await context.octokit.checks.create(
       context.repo({
@@ -30,7 +52,7 @@ export default (app: Probot) => {
         head_sha: headSha,
         status: "completed",
         started_at: startTime.toISOString(),
-        conclusion: data.freezed ? "failure" : "success",
+        conclusion: isCheckFreezed(data) ? "failure" : "success",
         completed_at: new Date().toISOString(),
       })
     );
@@ -53,8 +75,7 @@ export default (app: Probot) => {
     const installation = db
       .collection("installations")
       .doc(installation_id.toString());
-    const data = (await installation.get()).data();
-    if (!data) throw new Error("Did not found installation");
+    const data = (await installation.get()).data() as Installation;
 
     const checksRequest = await context.octokit.checks.listForRef(
       context.repo({
@@ -74,7 +95,7 @@ export default (app: Probot) => {
     await context.octokit.checks.update(
       context.repo({
         check_run_id: check.id,
-        conclusion: data.freezed ? "failure" : "success",
+        conclusion: isCheckFreezed(data, check) ? "failure" : "success",
       })
     );
 
