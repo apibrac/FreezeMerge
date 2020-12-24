@@ -1,28 +1,37 @@
 import { Probot } from "probot";
 import admin from "firebase-admin";
 import { logger } from "firebase-functions";
+import { extractKeys } from "./smartKeyExtract";
 
 admin.initializeApp();
 const db = admin.firestore();
 
 export type Installation = {
   freezed: boolean;
-  whitelist: string[];
+  whitelistedPullRequestUrls: string[];
+  whitelistedTickets: string[];
 };
+
+// const pull_requests = check.pull_requests.filter(
+//   ({ head }) => head.sha === check.head_sha
+// );
 
 export function isCheckFreezed(
   installation: Installation,
-  check: {
-    pull_requests: { url: string; head: { sha: string } }[];
-    head_sha: string;
-  }
+  pull_requests: { title: string; url: string; head: { sha: string } }[]
 ) {
   if (!installation.freezed) return false;
 
-  const pull_requests = check.pull_requests.filter(
-    ({ head }) => head.sha === check.head_sha
-  );
-  if (pull_requests.find((pr) => installation.whitelist.includes(pr.url)))
+  if (
+    pull_requests.find((pr) =>
+      installation.whitelistedPullRequestUrls.includes(pr.url)
+    ) ||
+    pull_requests.find((pr) =>
+      extractKeys(pr.title).find((key) =>
+        installation.whitelistedTickets.includes(key)
+      )
+    )
+  )
     return false;
 
   return true;
@@ -42,6 +51,15 @@ export default (app: Probot) => {
       .doc(installation_id.toString());
     const data = (await installation.get()).data() as Installation;
 
+    const pullRequestsResults = await Promise.all(
+      checkSuite.pull_requests
+        .filter(({ head }) => head.sha === checkSuite.head_sha)
+        .map((pr) =>
+          context.octokit.pulls.get(context.repo({ pull_number: pr.number }))
+        )
+    );
+    const pullRequests = pullRequestsResults.map((pr) => pr.data);
+
     const check = await context.octokit.checks.create(
       context.repo({
         name: "Freeze Merge",
@@ -49,7 +67,7 @@ export default (app: Probot) => {
         head_sha: checkSuite.head_sha,
         status: "completed",
         started_at: startTime.toISOString(),
-        conclusion: isCheckFreezed(data, checkSuite) ? "failure" : "success",
+        conclusion: isCheckFreezed(data, pullRequests) ? "failure" : "success",
         completed_at: new Date().toISOString(),
       })
     );
@@ -62,10 +80,10 @@ export default (app: Probot) => {
   });
 
   app.on(
-    ["pull_request.opened", "pull_request.reopened"],
+    ["pull_request.opened", "pull_request.reopened", "pull_request.edited"],
     async function (context) {
       logger.info("Pull request opened");
-      const headSha = context.payload.pull_request.head.sha;
+      const pullRequest = context.payload.pull_request;
 
       const installation_id = context.payload.installation?.id;
       if (!installation_id)
@@ -78,7 +96,7 @@ export default (app: Probot) => {
 
       const checksRequest = await context.octokit.checks.listForRef(
         context.repo({
-          ref: headSha,
+          ref: pullRequest.head.sha,
         })
       );
       const checkRuns = checksRequest.data.check_runs;
@@ -94,7 +112,9 @@ export default (app: Probot) => {
       await context.octokit.checks.update(
         context.repo({
           check_run_id: check.id,
-          conclusion: isCheckFreezed(data, check) ? "failure" : "success",
+          conclusion: isCheckFreezed(data, [pullRequest])
+            ? "failure"
+            : "success",
         })
       );
 
