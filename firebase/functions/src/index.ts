@@ -41,7 +41,7 @@ export const onInstallationChange = functions.firestore
         repo: string;
         check_run_id: number;
       };
-      functions.logger.info("Updating check", checkData);
+      functions.logger.info("Syncing check", checkData);
 
       const check = await octokit.checks.get(checkData);
       if (
@@ -49,16 +49,15 @@ export const onInstallationChange = functions.firestore
           (p) => p.head.sha === check.data.head_sha
         )
       ) {
-        functions.logger.info(
-          "Check should be removed",
-          checkData.check_run_id
-        );
+        functions.logger.info("Deleting check", checkData);
         await octokit.checks.update({
+          // TODO message différent
           ...checkData,
           conclusion: "success",
         });
         return doc.ref.delete();
       } else {
+        functions.logger.info("Updating check", checkData);
         const pullRequestsResults = await Promise.all(
           check.data.pull_requests
             .filter(({ head }) => head.sha === check.data.head_sha)
