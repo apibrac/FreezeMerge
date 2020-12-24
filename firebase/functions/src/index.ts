@@ -57,9 +57,23 @@ export const onInstallationChange = functions.firestore
         });
         return doc.ref.delete();
       } else {
+        const pullRequestsResults = await Promise.all(
+          check.data.pull_requests
+            .filter(({ head }) => head.sha === check.data.head_sha)
+            .map((pr) =>
+              octokit.pulls.get({
+                owner: checkData.owner,
+                repo: checkData.repo,
+                pull_number: pr.number,
+              })
+            )
+        );
+        const pullRequests = pullRequestsResults.map((pr) => pr.data);
         return octokit.checks.update({
           ...checkData,
-          conclusion: isCheckFreezed(data, check.data) ? "failure" : "success",
+          conclusion: isCheckFreezed(data, pullRequests)
+            ? "failure"
+            : "success",
         });
       }
     });
