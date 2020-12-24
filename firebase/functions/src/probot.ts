@@ -12,10 +12,6 @@ export type Installation = {
   whitelistedTickets: string[];
 };
 
-// const pull_requests = check.pull_requests.filter(
-//   ({ head }) => head.sha === check.head_sha
-// );
-
 export function isCheckFreezed(
   installation: Installation,
   pull_requests: { title: string; url: string; head: { sha: string } }[]
@@ -72,11 +68,11 @@ export default (app: Probot) => {
       })
     );
 
-    return installation.collection("checks").add(
-      context.repo({
-        check_run_id: check.data.id,
-      })
-    );
+    const checkData = context.repo({
+      check_run_id: check.data.id,
+    });
+    logger.info("Created check", checkData);
+    return installation.collection("checks").add(checkData);
   });
 
   app.on(
@@ -118,11 +114,11 @@ export default (app: Probot) => {
         })
       );
 
-      return installation.collection("checks").add(
-        context.repo({
-          check_run_id: check.id,
-        })
-      );
+      const checkData = context.repo({
+        check_run_id: check.id,
+      });
+      logger.info("Updated check", checkData);
+      return installation.collection("checks").add(checkData);
     }
   );
 };
