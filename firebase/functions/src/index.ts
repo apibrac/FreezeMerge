@@ -45,7 +45,9 @@ export const onInstallationChange = functions.firestore
 
       const check = await octokit.checks.get(checkData);
       if (
-        check.data.pull_requests.find((p) => p.head.sha === check.data.head_sha)
+        !check.data.pull_requests.find(
+          (p) => p.head.sha === check.data.head_sha
+        )
       ) {
         functions.logger.info(
           "Check should be removed",
