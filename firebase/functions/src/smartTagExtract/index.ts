@@ -2,7 +2,7 @@
 
 import { Tokenizer } from "./tokenizer";
 
-export const extractKeys = (source: string) => {
+export const extractTags = (source: string) => {
   const tokenizer = Tokenizer();
   tokenizer.reset(source);
   const keys = [];
