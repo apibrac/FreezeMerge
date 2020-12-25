@@ -1,13 +1,17 @@
 import * as functions from "firebase-functions";
-import synchronizeCheckRunFn from "./probotWebhook";
-import { getOctokitFromPersistence, serverlessProbot } from "./probotConfig";
-import { getPersistenceFromProbot } from "./installationModel";
-import { Persistence, PERSISTENCES } from "./persistentData";
-import { synchronizeCheckRuns } from "./firebaseCallbacks";
+
+import { synchronizeCheckRunsFn } from "./github/checkRuns";
+import {
+  getOctokitFromPersistence,
+  getPersistenceFromProbot,
+} from "./github/config";
+import { serverlessProbot } from "./github/helpers/probot";
+import { Persistence, PERSISTENCES } from "./freeze/persistence";
+import { synchronizeCheckRuns } from "./freeze/synchronize";
 
 export const github_webhook = functions.https.onRequest(
   serverlessProbot((app) =>
-    synchronizeCheckRunFn(app, getPersistenceFromProbot)
+    synchronizeCheckRunsFn(app, getPersistenceFromProbot)
   )
 );
 
