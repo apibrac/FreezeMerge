@@ -1,17 +1,19 @@
-import { Probot } from "probot";
-import { logger } from "firebase-functions";
-import { getCheckStatus } from "./checkRunStatus";
-import { getInstallationFromContext } from "./installationModel";
-import { getPullRequests, getCheckOnRef } from "./githubApi";
+import { Context, Probot } from "probot";
+import { getCheckOnRef, getPullRequests } from "./githubApi";
+import { Persistence } from "./persistentData";
 
-export default (app: Probot) => {
+export default (
+  app: Probot,
+  getPersistence: (context: Context) => Promise<Persistence>
+) => {
   app.on(["check_suite.requested"], async function (context) {
     const startTime = new Date();
 
-    const installation = await getInstallationFromContext(context);
+    const persistence = await getPersistence(context);
 
     const checkSuite = context.payload.check_suite;
     const pullRequests = await getPullRequests(checkSuite, context);
+    const [checkAttributes] = persistence.getCheckStatus(pullRequests);
 
     const checkRun = await context.octokit.checks.create(
       context.repo({
@@ -20,21 +22,20 @@ export default (app: Probot) => {
         head_sha: checkSuite.head_sha,
         status: "completed",
         started_at: startTime.toISOString(),
-        ...getCheckStatus(installation, pullRequests),
+        ...checkAttributes,
       })
     );
 
     const checkData = context.repo({
       check_run_id: checkRun.data.id,
     });
-    logger.info("Created check", checkData);
-    return installation.createCheck(checkData);
+    return persistence.onCreateCheck(checkData);
   });
 
   app.on(
     ["pull_request.opened", "pull_request.reopened", "pull_request.edited"],
     async function (context) {
-      const installation = await getInstallationFromContext(context);
+      const persistence = await getPersistence(context);
 
       const pullRequest = context.payload.pull_request;
       const checkRun = await getCheckOnRef(context, pullRequest.head.sha);
@@ -42,13 +43,13 @@ export default (app: Probot) => {
       const checkData = context.repo({
         check_run_id: checkRun.id,
       });
-      logger.info("Updating check", checkData);
+      const [checkAttributes] = persistence.getCheckStatus([pullRequest]);
 
       await context.octokit.checks.update({
         ...checkData,
-        ...getCheckStatus(installation, [pullRequest]),
+        ...checkAttributes,
       });
-      return installation.createCheck(checkData);
+      return persistence.onUpdateCheck(checkData);
     }
   );
 };
