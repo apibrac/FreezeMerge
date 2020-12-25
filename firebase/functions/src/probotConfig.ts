@@ -1,5 +1,5 @@
 import * as functions from "firebase-functions";
-import { Installation } from "./persistentData";
+import { Persistence } from "./persistentData";
 import { Server, Probot, ProbotOctokit } from "probot";
 import { createAppAuth } from "@octokit/auth-app";
 
@@ -22,8 +22,8 @@ const newOctokit = (installationId: number) =>
     },
   });
 
-export function getOctokitFromInstallation(installation: Installation) {
-  const installationId = parseInt(installation.ref.id);
+export function getOctokitFromPersistence(persistence: Persistence) {
+  const installationId = parseInt(persistence.ref.id);
   return newOctokit(installationId);
 }
 

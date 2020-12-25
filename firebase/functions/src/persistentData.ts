@@ -1,37 +1,95 @@
-interface InstallationData {
+import { logger } from "firebase-functions";
+import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
+import { checkRunStatus, CheckAttributes } from "./checkRunStatus";
+import { extractTags } from "./smartTagExtract";
+
+export const PERSISTENCES = "installations";
+const HOOKS = "checks";
+
+interface PersistenceData {
   freezed: boolean;
   whitelistedPullRequestUrls: string[];
   whitelistedTickets: string[];
 }
-export type CheckData = {
+export type HookData = {
   owner: string;
   repo: string;
   check_run_id: number;
 };
 
-export interface Installation {
-  data: InstallationData;
+export class Persistence {
+  data: PersistenceData;
   ref: FirebaseFirestore.DocumentReference;
-}
-export function wrapInstallation(installation: Installation) {
-  return {
-    ...installation,
 
-    createCheck(check: CheckData) {
-      return this.ref.collection("checks").add(check);
-    },
+  constructor(doc: DocumentSnapshot) {
+    const data = doc.data();
+    if (!data) throw new Error("No installation found ");
 
-    async getChecks() {
-      const checks = await this.ref.collection("checks").get();
+    this.data = data as {
+      freezed: boolean;
+      whitelistedPullRequestUrls: string[];
+      whitelistedTickets: string[];
+    };
+    this.ref = doc.ref;
+  }
 
-      return checks.docs.map((doc) => {
-        const data = doc.data() as CheckData;
+  getCheckStatus(
+    pullRequests: { title: string; url: string; head: { sha: string } }[]
+  ): [CheckAttributes, boolean] {
+    const {
+      freezed,
+      whitelistedPullRequestUrls,
+      whitelistedTickets,
+    } = this.data;
 
-        return {
-          data,
-          ref: doc.ref,
-        };
-      });
-    },
-  };
+    if (!pullRequests.length) return [checkRunStatus.notSynced(), false];
+
+    if (!freezed) return [checkRunStatus.success(), true];
+
+    if (
+      pullRequests.find((pr) => whitelistedPullRequestUrls.includes(pr.url)) ||
+      pullRequests.find((pr) =>
+        extractTags(pr.title).find((key) => whitelistedTickets.includes(key))
+      )
+    )
+      return [checkRunStatus.success(), true];
+
+    return [checkRunStatus.freezed(), true];
+  }
+
+  async getHooks() {
+    const checks = await this.ref.collection("checks").get();
+
+    return checks.docs.map((doc) => {
+      const checkData = doc.data() as HookData;
+
+      return {
+        checkData,
+        hookRef: doc.ref,
+      };
+    });
+  }
+
+  onCreateCheck(data: HookData) {
+    logger.info("Created check", data);
+    return this.ref.collection(HOOKS).add(data);
+  }
+
+  onUpdateCheck(data: HookData) {
+    logger.info("Updating check", data);
+    return this.ref.collection(HOOKS).add(data);
+  }
+
+  async onSyncCheck(
+    data: HookData,
+    hookRef: FirebaseFirestore.DocumentReference,
+    shouldKeepHook: boolean
+  ) {
+    if (shouldKeepHook) {
+      logger.info("Syncing check", data);
+    } else {
+      logger.info("Deleting check", data);
+      await hookRef.delete();
+    }
+  }
 }

@@ -1,9 +1,9 @@
 import { Context } from "probot";
 import { logger } from "firebase-functions";
 import { Octokit } from "@octokit/rest";
-import { CheckData } from "./persistentData";
 
-const contextRepo = ({ owner, repo }: CheckData, pull_number: number) => ({
+type RepoData = { owner: string; repo: string };
+const contextRepo = ({ owner, repo }: RepoData, pull_number: number) => ({
   owner,
   repo,
   pull_number,
@@ -14,7 +14,7 @@ export async function getPullRequests(
     head_sha: string;
     pull_requests: { number: number; head: { sha: string } }[];
   },
-  context: Context | { octokit: Octokit; checkData: CheckData }
+  context: Context | { octokit: Octokit; checkData: RepoData }
 ) {
   const pullRequests = check.pull_requests.filter(
     ({ head }) => head.sha === check.head_sha
