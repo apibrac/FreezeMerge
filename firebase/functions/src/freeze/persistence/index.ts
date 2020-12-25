@@ -1,10 +1,14 @@
 import { logger } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
-import { checkRunStatus, CheckAttributes } from "./checkRunStatus";
+import { checkRunStatus, CheckAttributes } from "../checkStatus";
 import { extractTags } from "./smartTagExtract";
+import admin from "firebase-admin";
 
 export const PERSISTENCES = "installations";
 const HOOKS = "checks";
+
+admin.initializeApp();
+const db = admin.firestore();
 
 interface PersistenceData {
   freezed: boolean;
@@ -33,6 +37,22 @@ export class Persistence {
     this.ref = doc.ref;
   }
 
+  static async retrieve(persistenceId: number) {
+    const persistenceDoc = db
+      .collection(PERSISTENCES)
+      .doc(persistenceId.toString());
+
+    const doc = await persistenceDoc.get();
+    return new Persistence(doc);
+  }
+
+  /**
+   * Method to choose which status attributes to use for override new or existing checkRun on github
+   *
+   * @param pullRequests - array of pull requests' details
+   * @returns checkAttributes: CheckAttributes - a substract of github's check_run attributes. Meant to be merged in check_run value for create or update
+   * @returns shouldKeepHook: boolean - tells if the specific check run reference should be kept for later synchronization
+   */
   getCheckStatus(
     pullRequests: { title: string; url: string; head: { sha: string } }[]
   ): [CheckAttributes, boolean] {

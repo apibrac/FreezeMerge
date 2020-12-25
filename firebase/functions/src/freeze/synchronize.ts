@@ -1,6 +1,6 @@
 import { Octokit } from "@octokit/rest";
-import { getPullRequests } from "./githubApi";
-import { Persistence } from "./persistentData";
+import { getPullRequests } from "../github/helpers/api";
+import { Persistence } from "./persistence";
 
 export async function synchronizeCheckRuns(
   octokit: Octokit,

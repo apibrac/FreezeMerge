@@ -1,8 +1,8 @@
 import { Context, Probot } from "probot";
-import { getCheckOnRef, getPullRequests } from "./githubApi";
-import { Persistence } from "./persistentData";
+import { getCheckOnRef, getPullRequests } from "./helpers/api";
+import { Persistence } from "../freeze/persistence";
 
-export default (
+export const synchronizeCheckRunsFn = (
   app: Probot,
   getPersistence: (context: Context) => Promise<Persistence>
 ) => {
