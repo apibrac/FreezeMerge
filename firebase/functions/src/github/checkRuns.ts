@@ -38,7 +38,12 @@ export const synchronizeCheckRunsFn = (
   });
 
   app.on(
-    ["pull_request.opened", "pull_request.reopened", "pull_request.edited"],
+    [
+      "pull_request.opened",
+      "pull_request.reopened",
+      "pull_request.edited",
+      "pull_request.synchronize",
+    ],
     async function (context) {
       const persistence = await getPersistence(context);
 
