@@ -9,7 +9,7 @@ import { serverlessProbot } from "./github/helpers/probot";
 import { Persistence } from "./freeze/persistence";
 import { synchronizeCheckRuns } from "./freeze/synchronize";
 import { onSlackWebhook } from "./slack/webhook";
-import { db, PERSISTENCES } from "./firestore/config";
+import { PERSISTENCES } from "./firestore/config";
 
 export const github_webhook = functions.https.onRequest(
   serverlessProbot((app) =>
@@ -26,22 +26,19 @@ export const onSynchronisationChange = functions.firestore
     return synchronizeCheckRuns(octokit, persistence);
   });
 
+// TODO intégrer le functions.https ainsi que le new Persistence dans le slack helper
 export const freeze = functions.https.onRequest(
   onSlackWebhook((id) => {
-    const persistenceDoc = db.collection(PERSISTENCES).doc(id);
+    const persistence = new Persistence(id);
 
-    return persistenceDoc.update({ freezed: true });
+    return persistence.freeze();
   })
 );
 
 export const unfreeze = functions.https.onRequest(
   onSlackWebhook((id) => {
-    const persistenceDoc = db.collection(PERSISTENCES).doc(id);
+    const persistence = new Persistence(id);
 
-    return persistenceDoc.update({
-      freezed: false,
-      whitelistedPullRequestUrls: [],
-      whitelistedTickets: [],
-    });
+    return persistence.unfreeze();
   })
 );
