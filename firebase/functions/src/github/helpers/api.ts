@@ -39,7 +39,7 @@ export async function getCheckOnRef(context: Context, ref: string) {
   const checkRuns = checkRunsRequest.data.check_runs;
 
   if (checkRuns.length === 0) {
-    throw new Error("No check on this PR head");
+    return;
   }
   if (checkRuns.length > 1) {
     logger.warn(

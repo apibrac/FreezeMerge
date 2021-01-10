@@ -49,6 +49,10 @@ export const synchronizeCheckRunsFn = (
 
       const pullRequest = context.payload.pull_request;
       const checkRun = await getCheckOnRef(context, pullRequest.head.sha);
+      if (!checkRun) {
+        console.log("No check on this PR for now");
+        return;
+      }
 
       const checkData = context.repo({
         check_run_id: checkRun.id,
