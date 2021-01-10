@@ -70,51 +70,47 @@ export class Persistence {
     });
   }
 
-  onCreateCheck(data: HookData) {
-    logger.info("Created check", data);
-    return this.ref.collection(HOOKS).add(data);
-  }
-  onUpdateCheck(data: HookData) {
-    logger.info("Updating check", data);
-    return this.ref.collection(HOOKS).add(data);
-  }
-  async onSyncCheck(
-    data: HookData,
-    hookRef: FirebaseFirestore.DocumentReference,
-    shouldKeepHook: boolean
-  ) {
-    if (shouldKeepHook) {
-      logger.info("Syncing check", data);
+  async synchronizeCheck({
+    pullRequests,
+    saveAndBuildHook,
+    hookRef,
+  }: {
+    pullRequests: { title: string; url: string; head: { sha: string } }[];
+    saveAndBuildHook: (status: CheckAttributes) => Promise<HookData>;
+    hookRef?: FirebaseFirestore.DocumentReference;
+  }) {
+    if (!pullRequests.length) {
+      const hook = await saveAndBuildHook(checkRunStatus.notSynced());
+      logger.info("Deleting check", hook);
+
+      return hookRef && hookRef.delete();
     } else {
-      logger.info("Deleting check", data);
-      await hookRef.delete();
+      const {
+        freezed,
+        whitelistedPullRequestUrls,
+        whitelistedTickets,
+      } = await this.data();
+
+      const checkRunSuccess =
+        !freezed ||
+        pullRequests.find((pr) =>
+          whitelistedPullRequestUrls.includes(pr.url)
+        ) ||
+        pullRequests.find((pr) =>
+          extractTags(pr.title).find((key) => whitelistedTickets.includes(key))
+        );
+
+      const status = checkRunSuccess
+        ? checkRunStatus.success()
+        : checkRunStatus.freezed();
+
+      const hook = await saveAndBuildHook(status);
+
+      if (hookRef) {
+        return hookRef.update(hook);
+      } else {
+        return this.ref.collection(HOOKS).add(hook);
+      }
     }
   }
-}
-
-// @TODO Correct les args
-/**
- * Method to choose which status attributes to use for override new or existing checkRun on github
- *
- * @param pullRequests - array of pull requests' details
- * @returns checkAttributes: CheckAttributes - a substract of github's check_run attributes. Meant to be merged in check_run value for create or update
- * @returns shouldKeepHook: boolean - tells if the specific check run reference should be kept for later synchronization
- */
-export function getCheckStatus(
-  pullRequests: { title: string; url: string; head: { sha: string } }[],
-  { freezed, whitelistedPullRequestUrls, whitelistedTickets }: PersistenceData
-): [CheckAttributes, boolean] {
-  if (!pullRequests.length) return [checkRunStatus.notSynced(), false];
-
-  if (!freezed) return [checkRunStatus.success(), true];
-
-  if (
-    pullRequests.find((pr) => whitelistedPullRequestUrls.includes(pr.url)) ||
-    pullRequests.find((pr) =>
-      extractTags(pr.title).find((key) => whitelistedTickets.includes(key))
-    )
-  )
-    return [checkRunStatus.success(), true];
-
-  return [checkRunStatus.freezed(), true];
 }
