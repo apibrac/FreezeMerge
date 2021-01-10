@@ -1,6 +1,6 @@
 import { Context, Probot } from "probot";
 import { getCheckOnRef, getPullRequests } from "./helpers/api";
-import { getCheckStatus, Persistence } from "../freeze/persistence";
+import { Persistence } from "../freeze/persistence";
 
 export const synchronizeCheckRunsFn = (
   app: Probot,
@@ -13,26 +13,28 @@ export const synchronizeCheckRunsFn = (
 
     const checkSuite = context.payload.check_suite;
     const pullRequests = await getPullRequests(checkSuite, context);
-    const [checkAttributes] = getCheckStatus(
+
+    return persistence.synchronizeCheck({
       pullRequests,
-      await persistence.data()
-    );
 
-    const checkRun = await context.octokit.checks.create(
-      context.repo({
-        name: "Freeze Merge",
-        head_branch: checkSuite.head_branch,
-        head_sha: checkSuite.head_sha,
-        status: "completed",
-        started_at: startTime.toISOString(),
-        ...checkAttributes,
-      })
-    );
+      saveAndBuildHook: async (checkAttributes) => {
+        const checkRun = await context.octokit.checks.create(
+          context.repo({
+            name: "Freeze Merge",
+            head_branch: checkSuite.head_branch,
+            head_sha: checkSuite.head_sha,
+            status: "completed",
+            started_at: startTime.toISOString(),
+            ...checkAttributes,
+          })
+        );
 
-    const checkData = context.repo({
-      check_run_id: checkRun.data.id,
+        const hook = context.repo({
+          check_run_id: checkRun.data.id,
+        });
+        return hook;
+      },
     });
-    return persistence.onCreateCheck(checkData);
   });
 
   app.on(
@@ -46,16 +48,19 @@ export const synchronizeCheckRunsFn = (
       const checkData = context.repo({
         check_run_id: checkRun.id,
       });
-      const [checkAttributes] = getCheckStatus(
-        [pullRequest],
-        await persistence.data()
-      );
 
-      await context.octokit.checks.update({
-        ...checkData,
-        ...checkAttributes,
+      return persistence.synchronizeCheck({
+        pullRequests: [pullRequest],
+
+        saveAndBuildHook: async (checkAttributes) => {
+          await context.octokit.checks.update({
+            ...checkData,
+            ...checkAttributes,
+          });
+
+          return checkData;
+        },
       });
-      return persistence.onUpdateCheck(checkData);
     }
   );
 };
