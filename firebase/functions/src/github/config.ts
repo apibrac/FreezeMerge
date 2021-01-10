@@ -33,5 +33,5 @@ export function getPersistenceFromProbot(context: {
   const persistenceId = context.payload.installation?.id;
   if (!persistenceId) throw new Error("No installation");
 
-  return Persistence.retrieve(persistenceId);
+  return new Persistence(persistenceId.toString());
 }

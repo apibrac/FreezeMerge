@@ -1,19 +1,22 @@
 import { Context, Probot } from "probot";
 import { getCheckOnRef, getPullRequests } from "./helpers/api";
-import { Persistence } from "../freeze/persistence";
+import { getCheckStatus, Persistence } from "../freeze/persistence";
 
 export const synchronizeCheckRunsFn = (
   app: Probot,
-  getPersistence: (context: Context) => Promise<Persistence>
+  getPersistence: (context: Context) => Persistence
 ) => {
   app.on(["check_suite.requested"], async function (context) {
     const startTime = new Date();
 
-    const persistence = await getPersistence(context);
+    const persistence = getPersistence(context);
 
     const checkSuite = context.payload.check_suite;
     const pullRequests = await getPullRequests(checkSuite, context);
-    const [checkAttributes] = persistence.getCheckStatus(pullRequests);
+    const [checkAttributes] = getCheckStatus(
+      pullRequests,
+      await persistence.data()
+    );
 
     const checkRun = await context.octokit.checks.create(
       context.repo({
@@ -43,7 +46,10 @@ export const synchronizeCheckRunsFn = (
       const checkData = context.repo({
         check_run_id: checkRun.id,
       });
-      const [checkAttributes] = persistence.getCheckStatus([pullRequest]);
+      const [checkAttributes] = getCheckStatus(
+        [pullRequest],
+        await persistence.data()
+      );
 
       await context.octokit.checks.update({
         ...checkData,

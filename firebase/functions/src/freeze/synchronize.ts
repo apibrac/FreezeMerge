@@ -1,6 +1,6 @@
 import { Octokit } from "@octokit/rest";
 import { getPullRequests } from "../github/helpers/api";
-import { Persistence } from "./persistence";
+import { getCheckStatus, Persistence } from "./persistence";
 
 export async function synchronizeCheckRuns(
   octokit: Octokit,
@@ -14,8 +14,9 @@ export async function synchronizeCheckRuns(
       octokit,
       checkData,
     });
-    const [checkAttributes, shouldKeepHook] = persistence.getCheckStatus(
-      pullRequests
+    const [checkAttributes, shouldKeepHook] = getCheckStatus(
+      pullRequests,
+      await persistence.data()
     );
 
     await octokit.checks.update({
