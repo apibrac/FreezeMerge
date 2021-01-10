@@ -75,14 +75,18 @@ export class Persistence {
     saveAndBuildHook,
     hookRef,
   }: {
-    pullRequests: { title: string; url: string; head: { sha: string } }[];
+    pullRequests: {
+      title: string;
+      url: string;
+      number: number;
+      head: { sha: string };
+    }[];
     saveAndBuildHook: (status: CheckAttributes) => Promise<HookData>;
     hookRef?: FirebaseFirestore.DocumentReference;
   }) {
     if (!pullRequests.length) {
       const hook = await saveAndBuildHook(checkRunStatus.notSynced());
       logger.info("Deleting check", hook);
-
       return hookRef && hookRef.delete();
     } else {
       const {
@@ -91,18 +95,26 @@ export class Persistence {
         whitelistedTickets,
       } = await this.data();
 
-      const checkRunSuccess =
-        !freezed ||
-        pullRequests.find((pr) =>
-          whitelistedPullRequestUrls.includes(pr.url)
-        ) ||
-        pullRequests.find((pr) =>
-          extractTags(pr.title).find((key) => whitelistedTickets.includes(key))
+      let status;
+
+      if (!freezed) status = checkRunStatus.success();
+
+      const whitelistedPullRequest = pullRequests.find((pr) =>
+        whitelistedPullRequestUrls.includes(pr.url)
+      );
+      if (whitelistedPullRequest)
+        status = checkRunStatus.whtelistedPullRequest(
+          whitelistedPullRequest.number
         );
 
-      const status = checkRunSuccess
-        ? checkRunStatus.success()
-        : checkRunStatus.freezed();
+      const whitelistedTag = pullRequests
+        .map((pr) => extractTags(pr.title))
+        .flat()
+        .find((tag) => whitelistedTickets.includes(tag));
+      if (whitelistedTag)
+        status = checkRunStatus.whitelistedTicket(whitelistedTag);
+
+      if (!status) status = checkRunStatus.freezed();
 
       const hook = await saveAndBuildHook(status);
 
