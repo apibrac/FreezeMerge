@@ -6,8 +6,10 @@ import {
   getPersistenceFromProbot,
 } from "./github/config";
 import { serverlessProbot } from "./github/helpers/probot";
-import { Persistence, PERSISTENCES } from "./freeze/persistence";
+import { Persistence } from "./freeze/persistence";
 import { synchronizeCheckRuns } from "./freeze/synchronize";
+import { onSlackWebhook } from "./slack/webhook";
+import { db, PERSISTENCES } from "./firestore/config";
 
 export const github_webhook = functions.https.onRequest(
   serverlessProbot((app) =>
@@ -23,3 +25,23 @@ export const onSynchronisationChange = functions.firestore
 
     return synchronizeCheckRuns(octokit, persistence);
   });
+
+export const freeze = functions.https.onRequest(
+  onSlackWebhook((id) => {
+    const persistenceDoc = db.collection(PERSISTENCES).doc(id);
+
+    return persistenceDoc.update({ freezed: true });
+  })
+);
+
+export const unfreeze = functions.https.onRequest(
+  onSlackWebhook((id) => {
+    const persistenceDoc = db.collection(PERSISTENCES).doc(id);
+
+    return persistenceDoc.update({
+      freezed: false,
+      whitelistedPullRequestUrls: [],
+      whitelistedTickets: [],
+    });
+  })
+);

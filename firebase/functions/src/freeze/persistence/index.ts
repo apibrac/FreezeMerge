@@ -1,14 +1,8 @@
 import { logger } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
+import { db, HOOKS, PERSISTENCES } from "../../firestore/config";
 import { checkRunStatus, CheckAttributes } from "../checkStatus";
 import { extractTags } from "./smartTagExtract";
-import admin from "firebase-admin";
-
-export const PERSISTENCES = "installations";
-const HOOKS = "checks";
-
-admin.initializeApp();
-const db = admin.firestore();
 
 interface PersistenceData {
   freezed: boolean;
