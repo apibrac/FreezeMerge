@@ -3,6 +3,7 @@ import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
 import { db, HOOKS, PERSISTENCES } from "../../firestore/config";
 import { checkRunStatus, CheckAttributes } from "../checkStatus";
 import { extractTags } from "./smartTagExtract";
+import admin from "firebase-admin";
 
 interface PersistenceData {
   freezed: boolean;
@@ -67,6 +68,11 @@ export class Persistence {
       freezed: false,
       whitelistedPullRequestUrls: [],
       whitelistedTickets: [],
+    });
+  }
+  whitelistTicket(tag: string) {
+    return this.ref.update({
+      whitelistedTickets: admin.firestore.FieldValue.arrayUnion(tag),
     });
   }
 

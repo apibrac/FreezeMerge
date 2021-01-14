@@ -42,3 +42,11 @@ export const unfreeze = functions.https.onRequest(
     return persistence.unfreeze();
   })
 );
+
+export const whitelistTicket = functions.https.onRequest(
+  onSlackWebhook((id, tag) => {
+    const persistence = new Persistence(id);
+
+    return persistence.whitelistTicket(tag);
+  })
+);
