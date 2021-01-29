@@ -66,9 +66,20 @@ export const unfreeze = functions.https.onRequest(
 );
 
 export const whitelistTicket = functions.https.onRequest(
-  onSlackWebhook((id, tag) => {
+  onSlackWebhook(async (id, tag) => {
     const persistence = new Persistence(id);
 
-    return persistence.whitelistTicket(tag);
+    await persistence.whitelistTicket(tag);
+    return {
+      "blocks": [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": `[WHITELIST] Le ticket ${tag} a été whitelisté`,
+          },
+        },
+      ],
+    }
   })
 );
