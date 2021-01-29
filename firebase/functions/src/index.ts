@@ -28,18 +28,40 @@ export const onSynchronisationChange = functions.firestore
 
 // TODO intégrer le functions.https ainsi que le new Persistence dans le slack helper
 export const freeze = functions.https.onRequest(
-  onSlackWebhook((id) => {
+  onSlackWebhook(async (id) => {
     const persistence = new Persistence(id);
 
-    return persistence.freeze();
+    await persistence.freeze();
+    return {
+      "blocks": [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "[FREEZE] Tous les repositories ont été freeze",
+          },
+        },
+      ],
+    }
   })
 );
 
 export const unfreeze = functions.https.onRequest(
-  onSlackWebhook((id) => {
+  onSlackWebhook(async (id) => {
     const persistence = new Persistence(id);
 
-    return persistence.unfreeze();
+    await persistence.unfreeze();
+    return {
+      "blocks": [
+        {
+          "type": "section",
+          "text": {
+            "type": "mrkdwn",
+            "text": "[UNFREEZE] Tous les repositories ont été unfreeze",
+          },
+        },
+      ],
+    }
   })
 );
 
