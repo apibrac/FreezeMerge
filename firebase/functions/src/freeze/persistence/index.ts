@@ -114,8 +114,7 @@ export class Persistence {
         );
 
       const whitelistedTag = pullRequests
-        .map((pr) => extractTags(pr.title))
-        .flat()
+        .reduce<string[]>((tags, pr) => [...tags, ...extractTags(pr.title)], [])
         .find((tag) => whitelistedTickets.includes(tag));
       if (whitelistedTag)
         status = checkRunStatus.whitelistedTicket(whitelistedTag);
