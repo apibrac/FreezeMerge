@@ -1,6 +1,6 @@
 import { logger } from "firebase-functions";
 import { DocumentSnapshot } from "firebase-functions/lib/providers/firestore";
-import { db, HOOKS, PERSISTENCES } from "../../firestore/config";
+import { db, HOOKS, PERSISTENCES } from "../config";
 import { checkRunStatus, CheckAttributes } from "../checkStatus";
 import { extractTags } from "./smartTagExtract";
 import admin from "firebase-admin";

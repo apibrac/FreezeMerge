@@ -32,6 +32,7 @@ export async function getPullRequests(
 
   return results.map(({ data }) => data);
 }
+
 export async function getCheckOnRef(context: Context, ref: string) {
   const checkRunsRequest = await context.octokit.checks.listForRef(
     context.repo({ ref })

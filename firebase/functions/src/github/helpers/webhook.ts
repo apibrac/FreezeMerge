@@ -1,5 +1,6 @@
 import { Server, Probot } from "probot";
 import { probotOptions } from "../config";
+import * as functions from "firebase-functions";
 
 export const serverlessProbot = (fn: (app: Probot) => void) => {
   const server = new Server({ Probot: Probot.defaults(probotOptions) });
@@ -7,5 +8,5 @@ export const serverlessProbot = (fn: (app: Probot) => void) => {
     .load(fn)
     .catch((error) => console.error(`Error loading probot app ${error}`));
 
-  return server.expressApp;
+  return functions.https.onRequest(server.expressApp);
 };

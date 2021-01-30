@@ -1,15 +1,12 @@
-import { Context, Probot } from "probot";
+import { Probot } from "probot";
 import { getCheckOnRef, getPullRequests } from "./helpers/api";
-import { Persistence } from "../freeze/persistence";
+import { getPersistenceFromProbot } from "./config";
 
-export const synchronizeCheckRunsFn = (
-  app: Probot,
-  getPersistence: (context: Context) => Persistence
-) => {
+export const probotApp = (app: Probot) => {
   app.on(["check_suite.requested"], async function (context) {
     const startTime = new Date();
 
-    const persistence = getPersistence(context);
+    const persistence = getPersistenceFromProbot(context);
 
     const checkSuite = context.payload.check_suite;
     const pullRequests = await getPullRequests(checkSuite, context);
@@ -45,7 +42,7 @@ export const synchronizeCheckRunsFn = (
       "pull_request.synchronize",
     ],
     async function (context) {
-      const persistence = await getPersistence(context);
+      const persistence = await getPersistenceFromProbot(context);
 
       const pullRequest = context.payload.pull_request;
       const checkRun = await getCheckOnRef(context, pullRequest.head.sha);
