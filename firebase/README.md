@@ -13,7 +13,7 @@ Step 12) Use the url from previous steps
 
 Step 14) You need to give :
 
-- "Checks" => "Read and Write"
+- "Checks" => "Read and Write" test
 - "Pull requests" => "Read-Only"
 
 Step 15) Suscribe to "Pull requests" events
