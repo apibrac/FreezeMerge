@@ -24,16 +24,9 @@ export const freeze = slackWebhook(async (id) => {
   await persistence.freeze();
 
   return {
-    blocks: [
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: "[FREEZE] Tous les repositories ont été freeze",
-        },
-      },
-    ],
-  };
+    response_type: "in_channel",
+    text: "[FREEZE] Tous les repositories ont été freeze",
+  }
 });
 
 export const unfreeze = slackWebhook(async (id) => {
@@ -41,16 +34,9 @@ export const unfreeze = slackWebhook(async (id) => {
   await persistence.unfreeze();
 
   return {
-    blocks: [
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: "[UNFREEZE] Tous les repositories ont été unfreeze",
-        },
-      },
-    ],
-  };
+    response_type: "in_channel",
+    text: "[UNFREEZE] Tous les repositories ont été unfreeze",
+  }
 });
 
 export const whitelistTicket = slackWebhook(async (id, tag) => {
@@ -58,14 +44,7 @@ export const whitelistTicket = slackWebhook(async (id, tag) => {
   await persistence.whitelistTicket(tag);
 
   return {
-    blocks: [
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `[WHITELIST] Le ticket ${tag} a été whitelisté`,
-        },
-      },
-    ],
+    response_type: "in_channel",
+    text: `[WHITELIST] Le ticket ${tag} a été whitelisté`,
   };
 });
